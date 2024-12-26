@@ -86,9 +86,14 @@ def run_udf(
     """API to call from Rust code that will call an UDF (initialized, in the case of actor pool UDFs) on the inputs."""
     return_dtype = DataType._from_pydatatype(py_return_dtype)
     kwarg_keys = list(bound_args.bound_args.kwargs.keys())
+    print(type(kwarg_keys))
+
     arg_keys = bound_args.arg_keys()
+    print(arg_keys)
+
     pyvalues = {key: val for key, val in bound_args.bound_args.arguments.items() if not isinstance(val, Expression)}
     expressions = bound_args.expressions()
+    print(expressions)
     assert len(evaluated_expressions) == len(
         expressions
     ), "Computed series must map 1:1 to the expressions that were evaluated"
@@ -232,10 +237,15 @@ class UDF:
             self.wrapped_inner = UninitializedUdf(lambda: self.inner)
 
     def __call__(self, *args, **kwargs) -> Expression:
+        #import traceback
+        #traceback.print_stack()
         self._validate_init_args()
 
         bound_args = self._bind_args(*args, **kwargs)
         expressions = list(bound_args.expressions().values())
+        print("-----")
+        print(bound_args)
+        print("-----")
 
         return Expression.udf(
             name=self.name,
@@ -248,6 +258,21 @@ class UDF:
             batch_size=self.batch_size,
             concurrency=self.concurrency,
         )
+
+
+    def register(self):
+        from daft.daft import register_sql_udf
+        register_sql_udf(
+            name=self.name,
+            inner=self.wrapped_inner,
+            return_dtype=self.return_dtype._dtype,
+            init_args=self.init_args,
+            resource_request=self.resource_request,
+            batch_size=self.batch_size,
+            concurrency=self.concurrency,
+        )
+        print("finish register")
+        pass
 
     def override_options(
         self,
@@ -292,6 +317,7 @@ class UDF:
 
         return dataclasses.replace(self, resource_request=new_resource_request, batch_size=new_batch_size)
 
+
     def _validate_init_args(self):
         if isinstance(self.inner, type):
             init_sig = inspect.signature(self.inner.__init__)  # type: ignore
@@ -317,6 +343,9 @@ class UDF:
                 **kwargs,
             )
         else:
+            print("****")
+            print(type(args[0]))
+            print(type(kwargs['padding']))
             sig = inspect.signature(self.inner)
             bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
@@ -532,12 +561,14 @@ def udf(
             )
         )
 
-        return UDF(
+        udf1 = UDF(
             inner=f,
             name=name,
             return_dtype=inferred_return_dtype,
             resource_request=resource_request,
             batch_size=batch_size,
         )
+        return udf1
 
     return _udf
+

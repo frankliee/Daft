@@ -1,4 +1,8 @@
+use core::option::Option::None;
+use core::panic;
 use std::{collections::HashMap, sync::Arc};
+use std::sync::Mutex;
+use std::sync::LazyLock;
 
 use daft_dsl::ExprRef;
 use hashing::SQLModuleHashing;
@@ -19,6 +23,25 @@ use crate::{
     planner::SQLPlanner,
     unsupported_sql_err,
 };
+use crate::modules::python::SQLPythonFunction;
+
+pub(crate) static mut USER_SQL_FUNCTIONS: Lazy<SQLFunctions> = Lazy::new(|| {
+    SQLFunctions::new()
+});
+
+pub fn register_sql_udf_to_functions(name: &str, fuc: SQLPythonFunction) {
+    unsafe {
+        // USER_SQL_FUNCTIONS.add_fn(name, SQLPythonFunction {});
+        let parts: Vec<&str> = name.split('.').collect();
+        match parts.last() {
+            Some(short_name) => {
+                println!("function {} will be register", short_name);
+                USER_SQL_FUNCTIONS.add_fn(short_name, fuc)
+            },
+            _ => panic!("Cannot register udf {}", name)
+        }
+    }
+}
 
 /// [SQL_FUNCTIONS] is a singleton that holds all the registered SQL functions.
 pub(crate) static SQL_FUNCTIONS: Lazy<SQLFunctions> = Lazy::new(|| {
@@ -247,9 +270,26 @@ impl<'a> SQLPlanner<'a> {
             name: impl AsRef<str>,
         ) -> SQLPlannerResult<Arc<dyn SQLFunction>> {
             let name = name.as_ref();
-            SQL_FUNCTIONS.get(name).cloned().ok_or_else(|| {
-                PlannerError::unsupported_sql(format!("Function `{}` not found", name))
-            })
+            let mut user_func = None;
+            unsafe {
+                user_func = USER_SQL_FUNCTIONS.get(name).cloned();
+            }
+            let sys_func = SQL_FUNCTIONS.get(name).cloned();
+            if user_func.is_some() {
+                Ok(user_func.unwrap())
+            } else if sys_func.is_some() {
+                Ok(sys_func.unwrap())
+            } else {
+                Err(PlannerError::unsupported_sql(format!(
+                    "Function `{}` not found",
+                    name
+                )))
+            }
+            /*            match sys_func {
+                None =>
+                    Err(PlannerError::unsupported_sql(format!("Function `{}` not found", name))),
+                _ => Ok(sys_func.unwrap())
+            }*/
         }
 
         // lookup function variant(s) by name

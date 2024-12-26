@@ -3,6 +3,7 @@ common-daft-config = {path = "../common/daft-config"}
 common-error = {path = "../common/error"}
 common-io-config = {path = "../common/io-config", default-features = false}
 common-runtime = {workspace = true}
+common-resource-request = {path = "../common/resource-request", default-features = false}
 daft-algebra = {path = "../daft-algebra"}
 daft-core = {path = "../daft-core"}
 daft-dsl = {path = "../daft-dsl"}
@@ -20,7 +21,7 @@ snafu.workspace = true
 rstest = {workspace = true}
 
 [features]
-python = ["dep:pyo3", "common-error/python", "daft-functions/python", "daft-functions-json/python", "daft-scan/python"]
+python = ["dep:pyo3", "common-error/python", "daft-functions/python", "daft-functions-json/python", "daft-scan/python", "common-resource-request/python"]
 
 [lints]
 workspace = true

@@ -1,4 +1,7 @@
 #![allow(non_snake_case)]
+
+use core::option::Option;
+use core::todo;
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
@@ -21,7 +24,7 @@ use pyo3::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{Expr, ExprRef, LiteralValue};
+use crate::{Expr, ExprRef, LiteralValue, python};
 
 #[pyfunction]
 pub fn col(name: &str) -> PyResult<PyExpr> {
@@ -212,6 +215,12 @@ pub fn udf(
         .into(),
     })
 }
+
+
+
+
+
+
 
 /// Initializes all uninitialized UDFs in the expression
 #[pyfunction]

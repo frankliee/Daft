@@ -1,10 +1,107 @@
 import datetime
 
+import numpy as np
 import pytest
 
 import daft
 from daft import col, interval
 from daft.sql.sql import SQLCatalog
+
+
+
+@daft.udf(return_dtype=daft.DataType.python())
+def crop_images(images, crops, padding=0):
+    cropped = []
+    for img, crop in zip(images.to_pylist(), crops.to_pylist()):
+        x1, x2, y1, y2 = crop
+        cropped_img = img[x1 : x2 + padding, y1 : y2 + padding]
+        cropped.append(cropped_img)
+    return cropped
+
+
+def test_image_udf():
+    df = daft.from_pydict(
+        {
+            # the `image` column contains images represented as 2D numpy arrays
+            "image": [np.ones((128, 128)) for i in range(16)],
+            # the `crop` column contains a box to crop from our image, represented as a list of integers: [x1, x2, y1, y2]
+            "crop": [[0, 1, 0, 1] for i in range(16)],
+        }
+    )
+    crop_images.register();
+    print(crop_images.name)
+    c = crop_images(df["image"], df["crop"], padding=1)
+
+    df = df.with_column(
+        "cropped",
+        c,
+    )
+    df.show(2)
+
+def test_image_udf2():
+    df = daft.from_pydict(
+        {
+            # the `image` column contains images represented as 2D numpy arrays
+            "image": [np.ones((128, 128)) for i in range(16)],
+            # the `crop` column contains a box to crop from our image, represented as a list of integers: [x1, x2, y1, y2]
+            "crop": [[0, 1, 0, 1] for i in range(16)],
+        }
+    )
+    crop_images.register();
+    daft.sql(
+        "select crop_images(image, crop) as c from df"
+    ).show()
+
+def test_udf():
+    import inspect
+
+    def my_function(a, b, c=10):
+        pass
+
+    args = (1, 2)
+    kwargs = {'c': 3}
+
+    bound_args = inspect.signature(my_function).bind(*args, **kwargs)
+    print(bound_args.kwargs)
+    print(bound_args.arguments)  # {'a': 1, 'b': 2, 'c': 3}
+
+    for name, value in bound_args.arguments.items():
+        print(f"{name} = {value}")
+
+
+def test_download():
+    df = daft.from_pydict(
+        {
+            "urls": [
+                "https://user-images.githubusercontent.com/17691182/190476440-28f29e87-8e3b-41c4-9c28-e112e595f558.png",
+                "https://user-images.githubusercontent.com/17691182/190476440-28f29e87-8e3b-41c4-9c28-e112e595f558.png",
+                "https://user-images.githubusercontent.com/17691182/190476440-28f29e87-8e3b-41c4-9c28-e112e595f558.png",
+            ]
+        }
+    )
+    df = daft.sql("SELECT image_decode(url_download(urls, max_connections := 10, on_error := 'raise')) FROM df")
+    df.show()
+
+
+def test_download_df():
+    df = daft.from_pydict(
+        {
+            "urls": [
+                "https://user-images.githubusercontent.com/17691182/190476440-28f29e87-8e3b-41c4-9c28-e112e595f558.png",
+                "https://user-images.githubusercontent.com/17691182/190476440-28f29e87-8e3b-41c4-9c28-e112e595f558.png",
+                "https://user-images.githubusercontent.com/17691182/190476440-28f29e87-8e3b-41c4-9c28-e112e595f558.png",
+            ]
+        }
+    )
+    df = df.select(daft.col("urls").url.download().image.decode())
+    df.show()
+
+
+def test_s3_Config():
+    # daft.sql("select s3config()").show()
+    df = daft.from_pydict({"A": [1, 2, 3], "B": [1, 2, 3]})
+    df = daft.sql("SELECT A + B as C, S3Config() FROM df")
+    df.show()
 
 
 def test_nested():

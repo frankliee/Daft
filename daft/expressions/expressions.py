@@ -298,7 +298,7 @@ class Expression:
         batch_size: int | None,
         concurrency: int | None,
     ) -> Expression:
-        return Expression._from_pyexpr(
+        a = Expression._from_pyexpr(
             _udf(
                 name,
                 inner,
@@ -311,6 +311,10 @@ class Expression:
                 concurrency,
             )
         )
+        print("=====")
+        print(a._expr)
+        print("=====")
+        return a
 
     @staticmethod
     def to_struct(*inputs: Expression | builtins.str) -> Expression:
