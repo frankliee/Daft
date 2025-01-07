@@ -1,5 +1,7 @@
 #![feature(let_chains)]
 
+extern crate alloc;
+
 pub mod catalog;
 pub mod error;
 pub mod functions;
@@ -21,6 +23,8 @@ pub fn register_modules(parent: &Bound<PyModule>) -> PyResult<()> {
     parent.add_function(wrap_pyfunction_bound!(python::sql, parent)?)?;
     parent.add_function(wrap_pyfunction_bound!(python::sql_expr, parent)?)?;
     parent.add_function(wrap_pyfunction_bound!(python::list_sql_functions, parent)?)?;
+    parent.add_function(wrap_pyfunction_bound!(python::register_sql_udf, parent)?)?;
+
     Ok(())
 }
 

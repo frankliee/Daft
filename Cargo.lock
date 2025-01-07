@@ -2552,6 +2552,7 @@ dependencies = [
  "common-daft-config",
  "common-error",
  "common-io-config",
+ "common-resource-request",
  "common-runtime",
  "daft-algebra",
  "daft-core",

@@ -1,9 +1,16 @@
+use alloc::string::ToString;
+use core::convert::Into;
 use common_daft_config::PyDaftPlanningConfig;
 use daft_dsl::python::PyExpr;
 use daft_logical_plan::{LogicalPlanBuilder, PyLogicalPlanBuilder};
 use pyo3::prelude::*;
+use daft_core::python::PyDataType;
 
 use crate::{catalog::SQLCatalog, functions::SQL_FUNCTIONS, planner::SQLPlanner};
+use crate::functions::register_sql_udf_to_functions;
+
+use common_resource_request::ResourceRequest;
+use crate::modules::python::SQLPythonFunction;
 
 #[pyclass]
 pub struct SQLFunctionStub {
@@ -45,6 +52,30 @@ pub fn sql(
 pub fn sql_expr(sql: &str) -> PyResult<PyExpr> {
     let expr = crate::planner::sql_expr(sql)?;
     Ok(PyExpr { expr })
+}
+
+
+#[pyfunction]
+#[allow(clippy::too_many_arguments)]
+pub fn register_sql_udf(
+    name: &str,
+    inner: PyObject,
+    return_dtype: PyDataType,
+    init_args: PyObject,
+    resource_request: Option<ResourceRequest>,
+    batch_size: Option<usize>,
+    concurrency: Option<usize>,
+) {
+    let func = SQLPythonFunction{
+        name: name.to_string().into(),
+        inner: inner.into(),
+        return_dtype: return_dtype.dtype,
+        init_args: init_args.into(),
+        resource_request,
+        batch_size,
+        concurrency
+    };
+    register_sql_udf_to_functions(name, func);
 }
 
 #[pyfunction]
